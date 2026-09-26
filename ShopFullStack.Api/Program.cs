@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using ShopFullStack.Api.Data;
 using ShopFullStack.Api.Interfaces;
 using ShopFullStack.Api.Repositories;
+using ShopFullStack.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -10,6 +11,9 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
+
+builder.Services.AddScoped<IProductService, ProductService>();
+builder.Services.AddScoped<ICategoryService, CategoryService>();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
