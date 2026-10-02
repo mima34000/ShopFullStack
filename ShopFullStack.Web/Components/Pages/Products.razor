@@ -1,0 +1,170 @@
+﻿@page "/products"
+@inject ProductApiClient ProductApiClient
+@inject CategoryApiClient CategoryApiClient
+@using ShopFullStack.Api.Dtos
+
+<h1>Produkter</h1>
+
+@if (errorMessage is not null)
+{
+    <p class="error-message">@errorMessage</p>
+}
+
+<h2>@(editingId is null ? "Lägg till produkt" : "Redigera produkt")</h2>
+
+<EditForm Model="formModel" OnValidSubmit="HandleSubmit">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div>
+        <label>Namn</label>
+        <InputText @bind-Value="formModel.Name" />
+    </div>
+    <div>
+        <label>Pris</label>
+        <InputNumber @bind-Value="formModel.Price" />
+    </div>
+    <div>
+        <label>Lager</label>
+        <InputNumber @bind-Value="formModel.Stock" />
+    </div>
+    <div>
+        <label>Kategori</label>
+        <InputSelect @bind-Value="formModel.CategoryId">
+            <option value="0">-- Välj kategori --</option>
+            @foreach (var category in categories)
+            {
+                <option value="@category.Id">@category.Name</option>
+            }
+        </InputSelect>
+    </div>
+
+    <button type="submit">@(editingId is null ? "Lägg till" : "Spara ändringar")</button>
+    @if (editingId is not null)
+    {
+        <button type="button" @onclick="CancelEdit">Avbryt</button>
+    }
+</EditForm>
+
+<h2>Produktlista</h2>
+
+@if (products is null)
+{
+    <p>Laddar...</p>
+}
+else if (!products.Any())
+{
+    <p>Inga produkter.</p>
+}
+else
+{
+    <table>
+        <thead>
+            <tr>
+                <th>Namn</th>
+                <th>Pris</th>
+                <th>Lager</th>
+                <th>Kategori</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var product in products)
+            {
+                <tr>
+                    <td>@product.Name</td>
+                    <td>@product.Price</td>
+                    <td>@product.Stock</td>
+                    <td>@product.CategoryName</td>
+                    <td>
+                        <button @onclick="() => StartEdit(product)">Redigera</button>
+                        <button @onclick="() => DeleteProduct(product.Id)">Ta bort</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<ProductDto>? products;
+    private List<CategoryDto> categories = new();
+    private CreateProductDto formModel = new();
+    private int? editingId;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        try
+        {
+            errorMessage = null;
+            products = await ProductApiClient.GetAllAsync();
+            categories = await CategoryApiClient.GetAllAsync();
+        }
+        catch (Exception)
+        {
+            errorMessage = "Fel: API:t svarar inte. Försök igen senare.";
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        try
+        {
+            errorMessage = null;
+            if (editingId is null)
+            {
+                await ProductApiClient.CreateAsync(formModel);
+            }
+            else
+            {
+                await ProductApiClient.UpdateAsync(editingId.Value, formModel);
+            }
+
+            formModel = new CreateProductDto();
+            editingId = null;
+            await LoadData();
+        }
+        catch (Exception)
+        {
+            errorMessage = "Fel: det gick inte att spara produkten.";
+        }
+    }
+
+    private void StartEdit(ProductDto product)
+    {
+        editingId = product.Id;
+        formModel = new CreateProductDto
+        {
+            Name = product.Name,
+            Price = product.Price,
+            Stock = product.Stock,
+            CategoryId = product.CategoryId
+        };
+    }
+
+    private void CancelEdit()
+    {
+        editingId = null;
+        formModel = new CreateProductDto();
+    }
+
+    private async Task DeleteProduct(int id)
+    {
+        try
+        {
+            errorMessage = null;
+            await ProductApiClient.DeleteAsync(id);
+            await LoadData();
+        }
+        catch (Exception)
+        {
+            errorMessage = "Fel: det gick inte att ta bort produkten.";
+        }
+    }
+}
